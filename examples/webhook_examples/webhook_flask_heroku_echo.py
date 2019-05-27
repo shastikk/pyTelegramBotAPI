@@ -1,36 +1,34 @@
-import os
+# -*- coding: utf-8 -*-   
 
-from flask import Flask, request
-
+import random
 import telebot
+import os
+import unicodedata
 
-TOKEN = '<api_token>'
+# Creating the bot
+TOKEN = os.environ['TOKEN'] # Token previously stored in an environment var
 bot = telebot.TeleBot(TOKEN)
-server = Flask(__name__)
 
 
-@bot.message_handler(commands=['start'])
-def start(message):
-    bot.reply_to(message, 'Hello, ' + message.from_user.first_name)
+def select_response(message):
+	responses = ['Ie {} tio, no et canses?', '{}, eres un puto pesat de tio', 'Ie {}, ja hi ha prou que ja cansa',
+				'Collons {}, que pesat eres quan vols', "Que si {}, tio pesat, que ja t'hem llegit"]
+
+	response_to_use = random.choice(responses)
+	name = unicodedata.normalize('NFKD', message.from_user.first_name).encode('ascii','ignore')
+	response = response_to_use.format(name)
+
+	return response
 
 
-@bot.message_handler(func=lambda message: True, content_types=['text'])
-def echo_message(message):
-    bot.reply_to(message, message.text)
+# The decorator (@bot.message_handler) indicates the type of messages that will activate this function
+# In this case, we'll activate it for every message. See telebot API for more possibilities 
+@bot.message_handler(func=lambda message: True)
+def pole_reply(message):
+	# If the message contains the word 'pole' (case insensitive), the bot replies
+	if 'pole' in message.text.lower():
+		resposta = select_response(message)
+		bot.reply_to(message, resposta)
 
-
-@server.route('/' + TOKEN, methods=['POST'])
-def getMessage():
-    bot.process_new_updates([telebot.types.Update.de_json(request.stream.read().decode("utf-8"))])
-    return "!", 200
-
-
-@server.route("/")
-def webhook():
-    bot.remove_webhook()
-    bot.set_webhook(url='https://your_heroku_project.com/' + TOKEN)
-    return "!", 200
-
-
-if __name__ == "__main__":
-    server.run(host="0.0.0.0", port=int(os.environ.get('PORT', 5000)))
+bot.delete_webhook()
+bot.polling(none_stop=True)
